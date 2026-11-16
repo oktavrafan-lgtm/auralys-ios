@@ -1,5 +1,5 @@
 
-name: Auralys iOS Device Build
+name: Auralys iOS IPA Build
 
 on:
   workflow_dispatch:
@@ -33,14 +33,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Package app
+      - name: Package IPA
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/Auralys.app Payload/
-          zip -r Auralys-iPhone.zip Payload
+          zip -r Auralys.ipa Payload
 
-      - name: Upload iPhone build
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: Auralys-iPhone
-          path: Auralys-iPhone.zip
+          name: Auralys-IPA
+          path: Auralys.ipa
