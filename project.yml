@@ -1,0 +1,26 @@
+
+name: Auralys
+
+options:
+  bundleIdPrefix: com.auralys
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+targets:
+  Auralys:
+    type: application
+    platform: iOS
+
+    sources:
+      - path: Auralys
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.auralys.music
+        PRODUCT_NAME: Auralys
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UIBackgroundModes:
+          - audio
+        GENERATE_INFOPLIST_FILE: YES
