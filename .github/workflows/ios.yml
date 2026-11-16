@@ -1,5 +1,5 @@
 
-name: Auralys iOS Build
+name: Auralys iOS Device Build
 
 on:
   workflow_dispatch:
@@ -21,21 +21,26 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
 
-      - name: Build Auralys
+      - name: Build Auralys for iPhone
         run: |
           xcodebuild \
             -project Auralys.xcodeproj \
             -scheme Auralys \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Upload simulator app
-        if: success()
+      - name: Package app
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Auralys.app Payload/
+          zip -r Auralys-iPhone.zip Payload
+
+      - name: Upload iPhone build
         uses: actions/upload-artifact@v4
         with:
-          name: Auralys-Simulator
-          path: build/Build/Products/Debug-iphonesimulator/Auralys.app
+          name: Auralys-iPhone
+          path: Auralys-iPhone.zip
