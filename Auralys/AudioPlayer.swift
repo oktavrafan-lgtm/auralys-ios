@@ -1,4 +1,3 @@
-
 import Foundation
 import AVFoundation
 import MediaPlayer
@@ -11,6 +10,7 @@ final class AudioPlayer: ObservableObject {
     @Published var isPlaying = false
     @Published var tracks: [MusicTrack] = []
     @Published var currentIndex = 0
+    @Published var searchError: String?
 
     private var player: AVPlayer?
     private let service = JamendoService()
@@ -33,10 +33,14 @@ final class AudioPlayer: ObservableObject {
     }
 
     func search(_ query: String) async {
+        searchError = nil
+        tracks = []
+        currentIndex = 0
+
         do {
             tracks = try await service.searchTracks(query: query)
-            currentIndex = 0
         } catch {
+            searchError = error.localizedDescription
             print("Search error: \(error)")
         }
     }
