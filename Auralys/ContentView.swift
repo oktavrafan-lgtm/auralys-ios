@@ -3,7 +3,10 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var player: AudioPlayer
+
     @State private var searchText = ""
+    @State private var isSearching = false
+    @State private var hasSearched = false
 
     var body: some View {
         ZStack {
@@ -12,7 +15,6 @@ struct ContentView: View {
 
             VStack(spacing: 22) {
                 header
-
                 searchBar
 
                 ScrollView {
@@ -21,11 +23,24 @@ struct ContentView: View {
                             .font(.title2.bold())
                             .foregroundColor(.white)
 
-                        if player.tracks.isEmpty {
-                            Text("Cari musik favoritmu")
+                        if isSearching {
+                            ProgressView("Mencari musik...")
+                                .tint(.cyan)
                                 .foregroundColor(.gray)
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 35)
+
+                        } else if player.tracks.isEmpty {
+                            Text(
+                                hasSearched
+                                ? "Lagu tidak ditemukan. Coba kata kunci lain."
+                                : "Cari musik favoritmu"
+                            )
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 35)
+
                         } else {
                             ForEach(player.tracks) { track in
                                 trackRow(track)
@@ -67,19 +82,18 @@ struct ContentView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
 
-            TextField("Cari judul atau artis...", text: $searchText)
-                .foregroundColor(.white)
-                .submitLabel(.search)
-                .onSubmit {
-                    Task {
-                        await player.search(searchText)
-                    }
-                }
+            TextField(
+                "Cari judul atau artis...",
+                text: $searchText
+            )
+            .foregroundColor(.white)
+            .submitLabel(.search)
+            .onSubmit {
+                performSearch()
+            }
 
             Button {
-                Task {
-                    await player.search(searchText)
-                }
+                performSearch()
             } label: {
                 Image(systemName: "arrow.right.circle.fill")
                     .foregroundColor(.cyan)
@@ -91,17 +105,42 @@ struct ContentView: View {
         .cornerRadius(14)
     }
 
+    private func performSearch() {
+        let query = searchText.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !query.isEmpty else { return }
+
+        isSearching = true
+        hasSearched = true
+
+        Task {
+            await player.search(query)
+            isSearching = false
+        }
+    }
+
     private func trackRow(_ track: MusicTrack) -> some View {
         Button {
             player.play(track)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "music.note")
-                    .font(.title2)
-                    .foregroundColor(.cyan)
-                    .frame(width: 48, height: 48)
-                    .background(Color.white.opacity(0.08))
-                    .cornerRadius(10)
+                Group {
+                    if let imageURL = track.image {
+                        AsyncImage(url: imageURL) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } placeholder: {
+                            coverPlaceholder
+                        }
+                    } else {
+                        coverPlaceholder
+                    }
+                }
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(track.title)
@@ -116,15 +155,46 @@ struct ContentView: View {
 
                 Spacer()
 
-                Image(systemName: "play.circle.fill")
-                    .foregroundColor(.cyan)
-                    .font(.title2)
+                Image(
+                    systemName: player.currentTrack?.id == track.id
+                    ? (player.isPlaying ? "waveform" : "pause.circle.fill")
+                    : "play.circle.fill"
+                )
+                .foregroundColor(.cyan)
+                .font(.title2)
             }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var coverPlaceholder: some View {
+        ZStack {
+            Color.white.opacity(0.08)
+
+            Image(systemName: "music.note")
+                .font(.title2)
+                .foregroundColor(.cyan)
         }
     }
 
     private func miniPlayer(_ track: MusicTrack) -> some View {
-        HStack {
+        HStack(spacing: 12) {
+            if let imageURL = track.image {
+                AsyncImage(url: imageURL) { image in
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    coverPlaceholder
+                }
+                .frame(width: 45, height: 45)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                coverPlaceholder
+                    .frame(width: 45, height: 45)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.title)
                     .foregroundColor(.white)
@@ -139,11 +209,22 @@ struct ContentView: View {
             Spacer()
 
             Button {
+                player.playPrevious()
+            } label: {
+                Image(systemName: "backward.end.fill")
+                    .foregroundColor(.white)
+            }
+
+            Button {
                 player.togglePlayback()
             } label: {
-                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    .foregroundColor(.white)
-                    .font(.title2)
+                Image(
+                    systemName: player.isPlaying
+                    ? "pause.fill"
+                    : "play.fill"
+                )
+                .foregroundColor(.cyan)
+                .font(.title2)
             }
 
             Button {
@@ -151,7 +232,6 @@ struct ContentView: View {
             } label: {
                 Image(systemName: "forward.end.fill")
                     .foregroundColor(.white)
-                    .font(.title2)
             }
         }
         .padding()
