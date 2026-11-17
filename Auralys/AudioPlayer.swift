@@ -6,6 +6,7 @@ import Combine
 
 @MainActor
 final class AudioPlayer: ObservableObject {
+
     @Published var currentTrack: MusicTrack?
     @Published var isPlaying = false
     @Published var tracks: [MusicTrack] = []
@@ -34,6 +35,7 @@ final class AudioPlayer: ObservableObject {
     func search(_ query: String) async {
         do {
             tracks = try await service.searchTracks(query: query)
+            currentIndex = 0
         } catch {
             print("Search error: \(error)")
         }
@@ -42,21 +44,37 @@ final class AudioPlayer: ObservableObject {
     func play(_ track: MusicTrack) {
         guard let url = track.audio else { return }
 
+        if let index = tracks.firstIndex(of: track) {
+            currentIndex = index
+        }
+
         currentTrack = track
         player = AVPlayer(url: url)
         player?.play()
+
         isPlaying = true
         updateNowPlaying()
     }
 
     func togglePlayback() {
         if isPlaying {
-            player?.pause()
-            isPlaying = false
+            pause()
         } else {
-            player?.play()
-            isPlaying = true
+            resume()
         }
+    }
+
+    func pause() {
+        player?.pause()
+        isPlaying = false
+        updateNowPlaying()
+    }
+
+    func resume() {
+        guard player != nil else { return }
+
+        player?.play()
+        isPlaying = true
         updateNowPlaying()
     }
 
@@ -67,31 +85,61 @@ final class AudioPlayer: ObservableObject {
         play(tracks[currentIndex])
     }
 
+    func playPrevious() {
+        guard !tracks.isEmpty else { return }
+
+        currentIndex = currentIndex > 0
+            ? currentIndex - 1
+            : tracks.count - 1
+
+        play(tracks[currentIndex])
+    }
+
     private func updateNowPlaying() {
         guard let track = currentTrack else { return }
 
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+        var info: [String: Any] = [
             MPMediaItemPropertyTitle: track.title,
             MPMediaItemPropertyArtist: track.artist,
-            MPNowPlayingInfoPropertyIsLiveStream: false
+            MPNowPlayingInfoPropertyIsLiveStream: false,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
         ]
+
+        if let duration = track.duration {
+            info[MPMediaItemPropertyPlaybackDuration] = Double(duration)
+        }
+
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     private func configureRemoteCommands() {
         let center = MPRemoteCommandCenter.shared()
 
         center.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.togglePlayback() }
+            Task { @MainActor in
+                self?.resume()
+            }
             return .success
         }
 
         center.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.togglePlayback() }
+            Task { @MainActor in
+                self?.pause()
+            }
             return .success
         }
 
         center.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.playNext() }
+            Task { @MainActor in
+                self?.playNext()
+            }
+            return .success
+        }
+
+        center.previousTrackCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                self?.playPrevious()
+            }
             return .success
         }
     }
