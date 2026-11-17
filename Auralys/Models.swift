@@ -11,6 +11,15 @@ struct MusicTrack: Identifiable, Decodable, Hashable {
 
     var title: String { name }
     var artist: String { artist_name }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case artist_name
+        case image = "album_image"
+        case audio
+        case duration
+    }
 }
 
 struct TrackResponse: Decodable {
