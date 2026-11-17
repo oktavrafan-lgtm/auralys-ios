@@ -1,4 +1,3 @@
-
 import Foundation
 
 struct MusicTrack: Identifiable, Decodable, Hashable {
@@ -9,13 +8,8 @@ struct MusicTrack: Identifiable, Decodable, Hashable {
     let audio: URL?
     let duration: Int?
 
-    var title: String {
-        name
-    }
-
-    var artist: String {
-        artist_name
-    }
+    var title: String { name }
+    var artist: String { artist_name }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,37 +22,42 @@ struct MusicTrack: Identifiable, Decodable, Hashable {
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(
-            keyedBy: CodingKeys.self
-        )
+        let container = try decoder.container(keyedBy: CodingKeys.self)
 
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
-        artist_name = try container.decode(
-            String.self,
-            forKey: .artist_name
-        )
+        artist_name = try container.decode(String.self, forKey: .artist_name)
 
-        image = try container.decodeIfPresent(
-            URL.self,
-            forKey: .album_image
-        ) ?? container.decodeIfPresent(
-            URL.self,
-            forKey: .image
-        )
+        // Singles can return an empty album_image; fall back to the track image.
+        let albumImage = Self.decodeURL(from: container, forKey: .album_image)
+        image = albumImage ?? Self.decodeURL(from: container, forKey: .image)
+        audio = Self.decodeURL(from: container, forKey: .audio)
+        duration = try container.decodeIfPresent(Int.self, forKey: .duration)
+    }
 
-        audio = try container.decodeIfPresent(
-            URL.self,
-            forKey: .audio
-        )
-
-        duration = try container.decodeIfPresent(
-            Int.self,
-            forKey: .duration
-        )
+    private static func decodeURL(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) -> URL? {
+        guard let value = try? container.decode(String.self, forKey: key),
+              !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return URL(string: value)
     }
 }
 
 struct TrackResponse: Decodable {
+    let headers: JamendoResponseHeaders?
     let results: [MusicTrack]
+}
+
+struct JamendoResponseHeaders: Decodable {
+    let code: Int
+    let errorMessage: String
+
+    enum CodingKeys: String, CodingKey {
+        case code
+        case errorMessage = "error_message"
+    }
 }
