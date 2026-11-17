@@ -1,4 +1,3 @@
-
 import SwiftUI
 
 struct ContentView: View {
@@ -30,10 +29,34 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 35)
 
+                        } else if let error = player.searchError {
+                            VStack(spacing: 10) {
+                                Image(systemName: "wifi.exclamationmark")
+                                    .font(.title)
+                                    .foregroundColor(.orange)
+
+                                Text("Pencarian gagal")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+
+                                Button("Coba lagi") {
+                                    performSearch()
+                                }
+                                .foregroundColor(.cyan)
+                                .padding(.top, 4)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 35)
+
                         } else if player.tracks.isEmpty {
                             Text(
                                 hasSearched
-                                ? "Lagu tidak ditemukan. Coba kata kunci lain."
+                                ? "Lagu tidak ditemukan. Coba judul lagu atau nama artis lain."
                                 : "Cari musik favoritmu"
                             )
                             .foregroundColor(.gray)
