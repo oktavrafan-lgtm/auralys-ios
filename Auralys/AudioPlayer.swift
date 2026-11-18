@@ -1,3 +1,4 @@
+
 import Foundation
 import AVFoundation
 import MediaPlayer
@@ -13,6 +14,7 @@ final class AudioPlayer: ObservableObject {
     @Published var searchError: String?
 
     private var player: AVPlayer?
+    private var timeObserver: Any?
     private let service = JamendoService()
 
     init() {
@@ -24,7 +26,8 @@ final class AudioPlayer: ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setCategory(
                 .playback,
-                mode: .default
+                mode: .default,
+                options: []
             )
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
@@ -46,26 +49,30 @@ final class AudioPlayer: ObservableObject {
     }
 
     func play(_ track: MusicTrack) {
-        guard let url = track.audio else { return }
+        guard let url = track.audio else {
+            searchError = "Audio lagu tidak tersedia."
+            return
+        }
 
         if let index = tracks.firstIndex(of: track) {
             currentIndex = index
         }
 
-        currentTrack = track
-        player = AVPlayer(url: url)
-        player?.play()
+        removeTimeObserver()
 
+        let item = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: item)
+
+        currentTrack = track
         isPlaying = true
+
+        player?.play()
+        addTimeObserver()
         updateNowPlaying()
     }
 
     func togglePlayback() {
-        if isPlaying {
-            pause()
-        } else {
-            resume()
-        }
+        isPlaying ? pause() : resume()
     }
 
     func pause() {
@@ -75,11 +82,16 @@ final class AudioPlayer: ObservableObject {
     }
 
     func resume() {
-        guard player != nil else { return }
+        guard let player else { return }
 
-        player?.play()
-        isPlaying = true
-        updateNowPlaying()
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+            player.play()
+            isPlaying = true
+            updateNowPlaying()
+        } catch {
+            print("Resume error: \(error)")
+        }
     }
 
     func playNext() {
@@ -99,6 +111,32 @@ final class AudioPlayer: ObservableObject {
         play(tracks[currentIndex])
     }
 
+    private func addTimeObserver() {
+        guard let player else { return }
+
+        let interval = CMTime(
+            seconds: 1,
+            preferredTimescale: 600
+        )
+
+        timeObserver = player.addPeriodicTimeObserver(
+            forInterval: interval,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateNowPlaying()
+            }
+        }
+    }
+
+    private func removeTimeObserver() {
+        if let observer = timeObserver, let player {
+            player.removeTimeObserver(observer)
+        }
+
+        timeObserver = nil
+    }
+
     private func updateNowPlaying() {
         guard let track = currentTrack else { return }
 
@@ -106,7 +144,9 @@ final class AudioPlayer: ObservableObject {
             MPMediaItemPropertyTitle: track.title,
             MPMediaItemPropertyArtist: track.artist,
             MPNowPlayingInfoPropertyIsLiveStream: false,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime:
+                player?.currentTime().seconds ?? 0
         ]
 
         if let duration = track.duration {
