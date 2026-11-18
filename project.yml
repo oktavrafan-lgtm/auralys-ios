@@ -15,16 +15,16 @@ targets:
     sources:
       - path: Auralys
 
+    info:
+      properties:
+        UIBackgroundModes:
+          - audio
+
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.auralys.music
         PRODUCT_NAME: Auralys
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1,2"
-
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-
-        INFOPLIST_KEY_UIBackgroundModes:
-          - audio
-
         GENERATE_INFOPLIST_FILE: YES
