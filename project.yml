@@ -16,6 +16,7 @@ targets:
       - path: Auralys
 
     info:
+      path: Auralys/Info.plist
       properties:
         UIBackgroundModes:
           - audio
@@ -27,4 +28,3 @@ targets:
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        GENERATE_INFOPLIST_FILE: YES
